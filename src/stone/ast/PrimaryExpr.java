@@ -1,7 +1,4 @@
-package stone;
-
-import stone.ast.ASTList;
-import stone.ast.ASTree;
+package stone.ast;
 
 import java.util.List;
 
