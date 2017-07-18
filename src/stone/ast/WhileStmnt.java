@@ -1,5 +1,7 @@
 package stone.ast;
 
+import stone.Environment;
+
 import java.util.List;
 
 /**
@@ -21,5 +23,17 @@ public class WhileStmnt extends ASTList {
     @Override
     public String toString() {
         return "(while " + condition() + " " + body() + ")";
+    }
+
+    @Override
+    public Object eval(Environment env) {
+        Object result = 0;
+        for (; ; ) {
+            Object c = condition().eval(env);
+            if (c instanceof Integer && (Integer) c == False)
+                return result;
+            else
+                result = body().eval(env);
+        }
     }
 }

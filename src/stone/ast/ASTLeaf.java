@@ -1,5 +1,7 @@
 package stone.ast;
 
+import stone.Environment;
+import stone.StoneException;
 import stone.Token;
 
 import java.util.ArrayList;
@@ -13,7 +15,7 @@ public class ASTLeaf extends ASTree {
     protected Token token; // 叶节点才有token字段
 
     public ASTLeaf(Token token) {
-        token = token;
+        this.token = token;
     }
 
     @Override
@@ -43,5 +45,10 @@ public class ASTLeaf extends ASTree {
 
     public Token token() {
         return token;
+    }
+
+    @Override
+    public Object eval(Environment env) {
+        throw new StoneException("cannot eval: " + toString(), this);
     }
 }

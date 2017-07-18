@@ -1,5 +1,8 @@
 package stone.ast;
 
+import stone.Environment;
+import stone.StoneException;
+
 import java.util.Iterator;
 import java.util.List;
 
@@ -48,5 +51,10 @@ public class ASTList extends ASTree {
             if (s != null) return s;
         }
         return null;
+    }
+
+    @Override
+    public Object eval(Environment env) {
+        throw new StoneException("cannot eval: " + toString(), this);
     }
 }

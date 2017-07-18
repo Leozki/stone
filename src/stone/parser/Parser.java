@@ -1,6 +1,8 @@
-package stone;
+package stone.parser;
 
-import com.sun.org.apache.bcel.internal.generic.RET;
+import stone.Lexer;
+import stone.ParseException;
+import stone.Token;
 import stone.ast.ASTLeaf;
 import stone.ast.ASTList;
 import stone.ast.ASTree;
@@ -19,7 +21,8 @@ public class Parser {
 
     protected static abstract class Element {
         protected abstract void parse(Lexer lexer, List<ASTree> res)
-            throws ParseException;
+                throws ParseException;
+
         protected abstract boolean match(Lexer lexer) throws ParseException;
     }
 
@@ -29,8 +32,9 @@ public class Parser {
         public Tree(Parser parser) {
             this.parser = parser;
         }
+
         @Override
-        protected void parse(Lexer lexer,List<ASTree> res) throws ParseException {
+        protected void parse(Lexer lexer, List<ASTree> res) throws ParseException {
             res.add(parser.parse(lexer));
         }
 
@@ -68,17 +72,20 @@ public class Parser {
             }
             return null;
         }
+
         protected void insert(Parser p) {
             Parser[] newParsers = new Parser[parsers.length + 1];
             newParsers[0] = p;
-            System.arraycopy(parsers,0,newParsers,1,parsers.length);
+            System.arraycopy(parsers, 0, newParsers, 1, parsers.length);
             parsers = newParsers;
         }
     }
+
     protected static class Repeat extends Element {
         protected Parser parser;
         protected boolean onlyOnce;
-        protected Repeat(Parser p,boolean once) {
+
+        protected Repeat(Parser p, boolean once) {
             parser = p;
             onlyOnce = once;
         }
@@ -86,7 +93,7 @@ public class Parser {
         @Override
         protected void parse(Lexer lexer, List<ASTree> res) throws ParseException {
             while (parser.match(lexer)) {
-                ASTree t= parser.parse(lexer);
+                ASTree t = parser.parse(lexer);
                 if (t.getClass() != ASTList.class || t.numChildren() > 0)
                     res.add(t);
                 if (onlyOnce)
@@ -99,13 +106,15 @@ public class Parser {
             return parser.match(lexer);
         }
     }
+
     public static abstract class AToken extends Element {
         protected Factory factory;
-        protected AToken (Class<? extends ASTLeaf> type) {
+
+        protected AToken(Class<? extends ASTLeaf> type) {
             if (type == null) {
                 type = ASTLeaf.class;
             }
-            factory = Factory.get(type,Token.class);
+            factory = Factory.get(type, Token.class);
         }
 
         @Override
@@ -114,7 +123,7 @@ public class Parser {
             if (test(t)) {
                 ASTree leaf = factory.make(t);
                 res.add(leaf);
-            }else{
+            } else {
                 throw new ParseException(t);
             }
         }
@@ -123,22 +132,31 @@ public class Parser {
         protected boolean match(Lexer lexer) throws ParseException {
             return test(lexer.peek(0));
         }
+
         protected abstract boolean test(Token t);
     }
 
     protected static class IdToken extends AToken {
         HashSet<String> reserved;
-        protected IdToken(Class<? extends ASTLeaf> type,HashSet<String> r) {
+
+        protected IdToken(Class<? extends ASTLeaf> type, HashSet<String> r) {
             super(type);
-            reserved = r != null ? r:new HashSet<String>();
+            reserved = r != null ? r : new HashSet<String>();
         }
+
         protected boolean test(Token t) {
             return t.isIdentifier() && !reserved.contains(t.getText());
         }
     }
+
     protected static class NumToken extends AToken {
-        protected NumToken(Class<? extends ASTLeaf> type) {super(type);}
-        protected boolean test(Token t) {return t.isNumber();}
+        protected NumToken(Class<? extends ASTLeaf> type) {
+            super(type);
+        }
+
+        protected boolean test(Token t) {
+            return t.isNumber();
+        }
     }
 
     protected static class StrToken extends AToken {
@@ -151,6 +169,7 @@ public class Parser {
             return t.isString();
         }
     }
+
     protected static class Leaf extends Element {
         protected String[] tokens;
 
@@ -164,16 +183,17 @@ public class Parser {
             if (t.isIdentifier()) {
                 for (String token : tokens) {
                     if (token.equals(t.getText())) {
-                        find(res,t);
+                        find(res, t);
                         return;
                     }
                 }
             }
             if (tokens.length > 0)
-                throw new ParseException(tokens[0] + " expected.",t);
+                throw new ParseException(tokens[0] + " expected.", t);
             else
                 throw new ParseException(t);
         }
+
         protected void find(List<ASTree> res, Token t) {
             res.add(new ASTLeaf(t));
         }
@@ -182,29 +202,37 @@ public class Parser {
         protected boolean match(Lexer lexer) throws ParseException {
             Token t = lexer.peek(0);
             if (t.isIdentifier())
-                for (String token: tokens)
+                for (String token : tokens)
                     if (token.equals(t.getText()))
                         return true;
 
             return false;
         }
     }
+
     protected static class Skip extends Leaf {
-        protected Skip(String[] t) { super(t); }
-        protected void find(List<ASTree> res, Token t) {}
+        protected Skip(String[] t) {
+            super(t);
+        }
+
+        protected void find(List<ASTree> res, Token t) {
+        }
     }
 
     public static class Precedence {
         int value;
         boolean leftAssoc; // left associative
+
         public Precedence(int v, boolean a) {
-            value = v; leftAssoc = a;
+            value = v;
+            leftAssoc = a;
         }
     }
 
-    public static class Operators extends HashMap<String,Precedence> {
+    public static class Operators extends HashMap<String, Precedence> {
         public static boolean LEFT = true;
         public static boolean RIGHT = false;
+
         public void add(String name, int prec, boolean leftAssoc) {
             put(name, new Precedence(prec, leftAssoc));
         }
@@ -214,13 +242,14 @@ public class Parser {
         protected Factory factory;
         protected Operators ops;
         protected Parser factor;
+
         protected Expr(Class<? extends ASTree> clazz, Parser exp,
-                       Operators map)
-        {
+                       Operators map) {
             factory = Factory.getForASTList(clazz);
             ops = map;
             factor = exp;
         }
+
         public void parse(Lexer lexer, List<ASTree> res) throws ParseException {
             ASTree right = factor.parse(lexer);
             Precedence prec;
@@ -229,9 +258,9 @@ public class Parser {
 
             res.add(right);
         }
+
         private ASTree doShift(Lexer lexer, ASTree left, int prec)
-                throws ParseException
-        {
+                throws ParseException {
             ArrayList<ASTree> list = new ArrayList<ASTree>();
             list.add(left);
             list.add(new ASTLeaf(lexer.read()));
@@ -244,6 +273,7 @@ public class Parser {
             list.add(right);
             return factory.make(list);
         }
+
         private Precedence nextOperator(Lexer lexer) throws ParseException {
             Token t = lexer.peek(0);
             if (t.isIdentifier())
@@ -251,19 +281,24 @@ public class Parser {
             else
                 return null;
         }
+
         private static boolean rightIsExpr(int prec, Precedence nextPrec) {
             if (nextPrec.leftAssoc)
                 return prec < nextPrec.value;
             else
                 return prec <= nextPrec.value;
         }
+
         protected boolean match(Lexer lexer) throws ParseException {
             return factor.match(lexer);
         }
     }
+
     public static final String factoryName = "create";
-    protected static abstract  class Factory {
+
+    protected static abstract class Factory {
         protected abstract ASTree make0(Object arg) throws Exception;
+
         protected ASTree make(Object arg) {
             try {
                 return make0(arg);
@@ -273,12 +308,13 @@ public class Parser {
                 throw new RuntimeException(e2); // this compiler is broken.
             }
         }
+
         protected static Factory getForASTList(Class<? extends ASTree> clazz) {
             Factory f = get(clazz, List.class);
             if (f == null)
                 f = new Factory() {
                     protected ASTree make0(Object arg) throws Exception {
-                        List<ASTree> results = (List<ASTree>)arg;
+                        List<ASTree> results = (List<ASTree>) arg;
                         if (results.size() == 1)
                             return results.get(0);
                         else
@@ -287,20 +323,21 @@ public class Parser {
                 };
             return f;
         }
+
         protected static Factory get(Class<? extends ASTree> clazz,
-                                     Class<?> argType)
-        {
+                                     Class<?> argType) {
             if (clazz == null)
                 return null;
             try {
                 final Method m = clazz.getMethod(factoryName,
-                        new Class<?>[] { argType });
+                        new Class<?>[]{argType});
                 return new Factory() {
                     protected ASTree make0(Object arg) throws Exception {
-                        return (ASTree)m.invoke(null, arg);
+                        return (ASTree) m.invoke(null, arg);
                     }
                 };
-            } catch (NoSuchMethodException e) {}
+            } catch (NoSuchMethodException e) {
+            }
             try {
                 final Constructor<? extends ASTree> c
                         = clazz.getConstructor(argType);
@@ -314,6 +351,7 @@ public class Parser {
             }
         }
     }
+
     protected List<Element> elements;
     protected Factory factory;
 
@@ -328,14 +366,15 @@ public class Parser {
 
     /**
      * 执行语法分析
+     *
      * @param lexer
      * @return
      * @throws ParseException
      */
     public ASTree parse(Lexer lexer) throws ParseException {
-        ArrayList<ASTree> results = new ArrayList<>();
+        ArrayList<ASTree> results = new ArrayList<ASTree>();
         for (Element e : elements) {
-            e.parse(lexer,results);
+            e.parse(lexer, results);
         }
         return factory.make(results);
     }
@@ -350,22 +389,28 @@ public class Parser {
 
     /**
      * 创建 Parser 对象
+     *
      * @return
      */
-    public static Parser rule() {return rule(null);}
+    public static Parser rule() {
+        return rule(null);
+    }
 
     /**
      * 创建 Parser 对象
+     *
      * @param clazz
      * @return
      */
     public static Parser rule(Class<? extends ASTree> clazz) {
         return new Parser(clazz);
     }
+
     public Parser reset() {
         elements = new ArrayList<>();
         return this;
     }
+
     public Parser reset(Class<? extends ASTree> clazz) {
         elements = new ArrayList<>();
         factory = Factory.getForASTList(clazz);
@@ -374,6 +419,7 @@ public class Parser {
 
     /**
      * 向语法规则中添加终结符 整型字面量
+     *
      * @return
      */
     public Parser number() {
@@ -382,6 +428,7 @@ public class Parser {
 
     /**
      * 向语法规则中添加终结符 整型字面量
+     *
      * @param clazz
      * @return
      */
@@ -392,26 +439,29 @@ public class Parser {
 
     /**
      * 向语法规则中添加终结符 除保留字 r 外的标识符
+     *
      * @param reserved
      * @return
      */
     public Parser identifier(HashSet<String> reserved) {
-        return identifier(null,reserved);
+        return identifier(null, reserved);
     }
 
     /**
      * 向语法规则中添加终结符 除保留字 r 外的标识符
+     *
      * @param clazz
      * @param reserved
      * @return
      */
-    public Parser identifier(Class<? extends ASTLeaf> clazz,HashSet<String> reserved){
-        elements.add(new IdToken(clazz,reserved));
+    public Parser identifier(Class<? extends ASTLeaf> clazz, HashSet<String> reserved) {
+        elements.add(new IdToken(clazz, reserved));
         return this;
     }
 
     /**
      * 向语法规则中添加终结符 字符串字面量
+     *
      * @return
      */
     public Parser string() {
@@ -420,6 +470,7 @@ public class Parser {
 
     /**
      * 向语法规则中添加终结符 字符串字面量
+     *
      * @param clazz
      * @return
      */
@@ -430,6 +481,7 @@ public class Parser {
 
     /**
      * 向语法规则中添加终结符 与 pat 匹配的标识符
+     *
      * @param pat
      * @return
      */
@@ -440,6 +492,7 @@ public class Parser {
 
     /**
      * 向语法规则中添加终结符(未包含于 AST 的) 与 pat 匹配的标识符
+     *
      * @param pat
      * @return
      */
@@ -450,6 +503,7 @@ public class Parser {
 
     /**
      * 向语法规则中添加非终结符
+     *
      * @param p
      * @return
      */
@@ -460,6 +514,7 @@ public class Parser {
 
     /**
      * 向语法规则中添加若干个由 or 关系连接的非终结符
+     *
      * @param p
      * @return
      */
@@ -467,73 +522,81 @@ public class Parser {
         elements.add(new OrTree(p));
         return this;
     }
+
     /**
      * 向语法规则中添加可省略的非终结符 如果省略,则作为一棵仅有根节点的抽象语法树处理
+     *
      * @param p
      * @return
      */
     public Parser maybe(Parser p) {
         Parser p2 = new Parser(p);
         p2.reset();
-        elements.add(new OrTree(new Parser[]{p,p2}));
+        elements.add(new OrTree(new Parser[]{p, p2}));
         return this;
     }
+
     /**
      * 向语法规则中添加可省略的非终结符
+     *
      * @param p
      * @return
      */
     public Parser option(Parser p) {
-        elements.add(new Repeat(p,true));
+        elements.add(new Repeat(p, true));
         return this;
     }
 
     /**
      * 向语法规则中添加至少重复出现0次的非终结符P
+     *
      * @param p
      * @return
      */
     public Parser repeat(Parser p) {
-        elements.add(new Repeat(p,false));
+        elements.add(new Repeat(p, false));
         return this;
     }
 
     /**
      * 向语法规则中添加双目运算表达式
+     *
      * @param subexp    因子
      * @param operators 表达式
      * @return
      */
-    public Parser expression(Parser subexp,Operators operators) {
-        elements.add(new Expr(null,subexp,operators));
+    public Parser expression(Parser subexp, Operators operators) {
+        elements.add(new Expr(null, subexp, operators));
         return this;
     }
 
     /**
      * 向语法规则中添加双目运算表达式
+     *
      * @param clazz
      * @param subexp    因子
      * @param operators 表达式
      * @return
      */
-    public Parser expression(Class<? extends ASTree> clazz,Parser subexp,Operators operators) {
-        elements.add(new Expr(clazz,subexp,operators));
-        return  this;
+    public Parser expression(Class<? extends ASTree> clazz, Parser subexp, Operators operators) {
+        elements.add(new Expr(clazz, subexp, operators));
+        return this;
     }
 
     /**
      * 为语法规则起始处的or添加新的分支选项
+     *
      * @param p
      * @return
      */
     public Parser insertChoice(Parser p) {
         Element e = elements.get(0);
         if (e instanceof OrTree) {
-            ((OrTree)e).insert(p);
-        }else {
+            ((OrTree) e).insert(p);
+        } else {
             Parser otherwise = new Parser(this);
             reset(null);
-            or(p,otherwise);
+            or(p, otherwise);
         }
         return this;
     }

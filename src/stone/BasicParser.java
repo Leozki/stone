@@ -1,10 +1,11 @@
 package stone;
 
-import static stone.Parser.rule;
+import static stone.parser.Parser.rule;
 
 import java.util.HashSet;
 
-import stone.Parser.Operators;
+import stone.parser.Parser;
+import stone.parser.Parser.Operators;
 import stone.ast.*;
 
 /**
