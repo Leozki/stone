@@ -1,12 +1,14 @@
-package stone;
+package stone.ast;
 
 import static stone.parser.Parser.rule;
 
 import java.util.HashSet;
 
+import stone.Lexer;
+import stone.exception.ParseException;
+import stone.Token;
 import stone.parser.Parser;
 import stone.parser.Parser.Operators;
-import stone.ast.*;
 
 /**
  * Created by master on 2017/7/16.

@@ -1,5 +1,7 @@
 package stone;
 
+import stone.exception.StoneException;
+
 /**
  * Created by master on 2017/7/13.
  */

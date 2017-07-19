@@ -1,5 +1,7 @@
 package stone;
 
+import stone.exception.ParseException;
+
 /**
  * Created by master on 2017/7/13.
  */

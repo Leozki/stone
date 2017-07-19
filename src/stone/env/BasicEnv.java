@@ -1,4 +1,6 @@
-package stone;
+package stone.env;
+
+import stone.exception.StoneException;
 
 import java.util.HashMap;
 
@@ -22,5 +24,24 @@ public class BasicEnv implements Environment {
     @Override
     public Object get(String name) {
         return values.get(name);
+    }
+
+    @Override
+    public void putNew(String name, Object value) {
+        put(name, value);
+    }
+
+    @Override
+    public Environment where(String name) {
+        if (values.get(name) != null) {
+            return this;
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public void setOuter(Environment e) {
+        throw new StoneException("Outer Environment can't set outer");
     }
 }
